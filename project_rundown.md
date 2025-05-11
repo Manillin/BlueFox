@@ -77,29 +77,29 @@ Il sistema "Braynr" implementa con successo un'architettura multi-agente per il 
 
 ```mermaid
 graph TD
-    User[Utente Web] --> FrontendRD[Frontend Rubber Duck]
+    User[Web User] --> FrontendRD[Frontend Rubber Duck]
     User --> FrontendP[Frontend Planner]
     
-    FrontendRD -->|Carica PDF| Django1[Django: process_pdf_view]
-    Django1 -->|Estrae testo| PDF1[Elaborazione PDF]
-    PDF1 --> Session1[Crea sessione ADK]
-    Session1 -->|POST /run| ADK1[ADK: Agente Rubber Duck]
-    ADK1 -->|Conferma| Django1
-    Django1 -->|Salva PDF in sessione| FrontendRD
+    FrontendRD -->|Upload PDF| Django1[Django: process_pdf_view]
+    Django1 -->|Extract text| PDF1[PDF Processing]
+    PDF1 --> Session1[Create ADK session]
+    Session1 -->|POST /run| ADK1[ADK: Rubber Duck Agent]
+    ADK1 -->|Confirmation| Django1
+    Django1 -->|Save text in session| FrontendRD
     
-    FrontendRD -->|Invia Audio/Trascrizione| Django2[Django: process_rubber_duck_audio]
-    Django2 -->|Recupera PDF da sessione| Session2[Sessione Django]
+    FrontendRD -->|Send Audio/Transcription| Django2[Django: process_rubber_duck_audio]
+    Django2 -->|Retrieve context from session| Session2[Django Session]
     Session2 -->|POST /run| ADK2[ADK: Rubber Duck]
     ADK2 -->|Feedback| Django2
     Django2 -->|JSON response| FrontendRD
     
-    FrontendP -->|Carica PDF + parametri| Django3[Django: generate_study_plan_view]
-    Django3 -->|Estrae testo| PDF2[Elaborazione PDF]
-    PDF2 --> Structure[Crea JSON strutturato]
-    Structure -->|Codifica Base64| Payload[Prepara payload]
-    Payload -->|POST /run_sse| ADK3[ADK: Agente Planner]
-    ADK3 -->|Stream SSE| Django3
-    Django3 -->|Problemi parsing risposta| FrontendP
+    FrontendP -->|Upload PDF + parameters| Django3[Django: generate_study_plan_view]
+    Django3 -->|Extract text| PDF2[PDF Processing]
+    PDF2 --> Structure[Create structured JSON]
+    Structure -->|Base64 encode| Payload[Prepare payload]
+    Payload -->|POST /run_sse| ADK3[ADK: Planner Agent]
+    ADK3 -->|SSE Stream| Django3
+    Django3 -->|Response parsing issues| FrontendP
     
     classDef error fill:#f99,stroke:#f00,stroke-width:2px
     class Django3,ADK3 error

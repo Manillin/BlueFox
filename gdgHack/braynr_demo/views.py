@@ -69,7 +69,6 @@ def _call_adk_run_specific_agent(
     run_url = f"{ADK_BASE_URL}/run_sse"
     input_data_json_string = json.dumps(structured_input_data)
 
-    # Codifica la stringa JSON in Base64
     base64_encoded_data = base64.b64encode(
         input_data_json_string.encode('utf-8')).decode('utf-8')
 
@@ -82,20 +81,47 @@ def _call_adk_run_specific_agent(
                 {
                     "inlineData": {
                         "mimeType": "application/json",
-                        "data": base64_encoded_data  # Usa la stringa codificata in Base64
+                        "data": base64_encoded_data
                     }
                 }
             ],
             "role": "user"
         },
-        "streaming": False
+        "streaming": True
     }
     print(
         f"Sending payload to ADK ({run_url}) for agent {agent_app_name} (session: {session_id}):")
     print(json.dumps(run_payload_structure, indent=2))
-    response = requests.post(run_url, json=run_payload_structure, timeout=240)
+
+    headers = {"Accept": "text/event-stream"}
+
+    response = requests.post(
+        run_url, json=run_payload_structure, headers=headers, timeout=240, stream=True)
     response.raise_for_status()
-    return response.json()
+
+    print(f"ADK Response Status: {response.status_code}")
+    print(f"ADK Response Headers: {response.headers}")
+
+    events = []
+    for line in response.iter_lines():
+        if line:
+            decoded_line = line.decode('utf-8')
+            if decoded_line.startswith('data:'):
+                event_json_str = decoded_line[len('data:'):].strip()
+                if event_json_str:
+                    try:
+                        event_data = json.loads(event_json_str)
+                        events.append(event_data)
+                    except json.JSONDecodeError as e:
+                        print(
+                            f"Errore nel decodificare JSON dalla riga di evento: {event_json_str} - Errore: {e}")
+
+    if not events:
+        print("Nessun evento 'data:' trovato nello stream o stream vuoto.")
+        return []
+
+    print(f"Eventi decodificati dallo stream: {events}")
+    return events
 
 # Create your views here.
 
@@ -115,6 +141,7 @@ def process_pdf_view(request):
             return JsonResponse({'success': False, 'error': 'Could not ensure ADK session for Rubber Duck.'}, status=503)
 
         pdf_file_content = None
+        text_from_pdf = ""
         source_of_context = "No PDF provided"
 
         if 'pdf_file' in request.FILES:
@@ -143,9 +170,8 @@ def process_pdf_view(request):
             except Exception as e:
                 print(f"Errore durante la lettura o pulizia del PDF: {e}")
                 return JsonResponse({'success': False, 'error': f'Errore durante la lettura o pulizia del PDF: {e}'}, status=500)
-
-        if not pdf_file_content:
-            return JsonResponse({'success': False, 'error': 'No PDF file processed or PDF is empty.'}, status=400)
+        else:
+            return JsonResponse({'success': False, 'error': 'Nessun file PDF fornito nella richiesta.'}, status=400)
 
         # Ora invia questo contenuto all'agente ADK chiedendogli di "assimilarlo"
         # e rispondere con una conferma.
@@ -153,10 +179,10 @@ def process_pdf_view(request):
             "[PLEASE RESPOND IN ENGLISH AND USE PLAIN TEXT ONLY. NO MARKDOWN.]\n"
             "The user has uploaded a document for study. Please acknowledge that you have received and processed this document. "
             "You can refer to it as 'the provided study material'.\n"
-            f"Document content (source: {source_of_context}):\n--- START OF STUDY MATERIAL ---\n{pdf_file_content}\n--- END OF STUDY MATERIAL ---"
+            f"Document content (source: {source_of_context}):\n--- START OF STUDY MATERIAL ---\n{text_from_pdf}\n--- END OF STUDY MATERIAL ---"
         )
 
-        payload_for_adk = {  # Non servono app_name, user_id, session_id qui, li aggiunge _call_adk_run_for_rubber_duck
+        payload_for_adk = {
             "new_message": {"parts": [{"text": message_to_agent}], "role": "user"},
             "streaming": False
         }
@@ -173,7 +199,7 @@ def process_pdf_view(request):
 
             # Salviamo il testo del PDF nella sessione Django per non doverlo riprocessare.
             # NOTA: Per PDF molto grandi, questo potrebbe non essere ideale. Per PoC va bene.
-            request.session['pdf_context_text'] = pdf_file_content
+            request.session['pdf_context_text'] = text_from_pdf
             request.session['pdf_source_of_context'] = source_of_context
 
             return JsonResponse({'success': True, 'agent_ready_message': agent_confirmation})
@@ -193,8 +219,8 @@ def process_pdf_view(request):
 def process_rubber_duck_audio(request):
     if request.method == 'POST':
         # Manteniamo _ensure_rubber_duck_adk_session per rubberAgent se usa sessioni fisse
-        # if not _ensure_rubber_duck_adk_session():
-        #     return JsonResponse({'success': False, 'error': 'Could not ensure ADK session.'}, status=503)
+        if not _ensure_rubber_duck_adk_session():
+            return JsonResponse({'success': False, 'error': 'Could not ensure ADK session.'}, status=503)
 
         transcription = request.POST.get('transcription', '')
         if not transcription:

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Braynr - Rubber Duck</title>
+    <title>Braynr - Rubber Duck Mode</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -41,55 +41,55 @@
 </head>
 <body>
     <div class="container">
-        <h1 class="text-center">Braynr - Modalità Rubber Duck (Flusso in 2 Passi)</h1>
+        <h1 class="text-center">Braynr - Rubber Duck Mode (2-Step Flow)</h1>
         <hr>
 
         <!-- Fase 1: Caricamento e Processamento PDF -->
-        <h2>Fase 1: Fornisci il Materiale di Studio</h2>
+        <h2>Step 1: Provide Study Material</h2>
         <div class="mb-3">
-            <label for="pdfFile" class="form-label"><strong>Carica PDF Materiale di Studio:</strong></label>
+            <label for="pdfFile" class="form-label"><strong>Upload Study Material PDF:</strong></label>
             <input class="form-control" type="file" id="pdfFile" accept=".pdf">
         </div>
         <div class="mb-3">
-            <label for="materialeStudioText" class="form-label"><strong>Oppure Incolla Testo (usato se nessun PDF è caricato):</strong></label>
-            <textarea class="form-control" id="materialeStudioText" rows="3" placeholder="Testo alternativo o aggiuntivo..."></textarea>
+            <label for="materialeStudioText" class="form-label"><strong>Or Paste Text (used if no PDF is uploaded):</strong></label>
+            <textarea class="form-control" id="materialeStudioText" rows="3" placeholder="Alternative or additional text..."></textarea>
         </div>
-        <button id="btnProcessMaterial" class="btn btn-info mb-3">Carica Materiale e Prepara Agente</button>
+        <button id="btnProcessMaterial" class="btn btn-info mb-3">Upload Material & Prepare Agent</button>
         
         <div id="pdfStatusArea" class="hidden">
-            Stato elaborazione materiale...
+            Processing material status...
         </div>
 
         <!-- Fase 2: Spiegazione Utente -->
-        <h2 id="fase2Title" class="hidden">Fase 2: La Tua Spiegazione Vocale</h2>
+        <h2 id="fase2Title" class="hidden">Step 2: Your Vocal Explanation</h2>
         <div id="recordingControls" class="hidden">
             <div class="mb-3 text-center">
-                <button id="btnStartRecording" class="btn btn-success btn-custom">Avvia Spiegazione</button>
-                <button id="btnStopRecording" class="btn btn-danger btn-custom" disabled>Ferma Spiegazione</button>
+                <button id="btnStartRecording" class="btn btn-success btn-custom">Start Explaining</button>
+                <button id="btnStopRecording" class="btn btn-danger btn-custom" disabled>Stop Explaining</button>
             </div>
             <div class="mb-3">
-                <label class="form-label"><strong>Stato Registrazione:</strong></label>
-                <p id="statusMessage" class="form-text">Pronto per iniziare...</p>
+                <label class="form-label"><strong>Recording Status:</strong></label>
+                <p id="statusMessage" class="form-text">Ready to start...</p>
             </div>
             <div class="mb-3">
-                <label class="form-label"><strong>La tua spiegazione (testo riconosciuto):</strong></label>
+                <label class="form-label"><strong>Your Explanation (recognized text):</strong></label>
                 <div id="spiegazioneArea">
-                    Il testo riconosciuto dalla tua spiegazione apparirà qui...
+                    The recognized text from your explanation will appear here...
                 </div>
             </div>
         </div>
 
         <!-- Risultati e Controlli TTS -->
         <div id="resultsArea" class="hidden">
-            <h2>Feedback dall'Agente</h2>
+            <h2>Feedback from Agent</h2>
             <div id="feedbackArea">
-                Il feedback dall'AI apparirà qui...
+                The AI's feedback will appear here...
             </div>
             <div id="ttsControls" class="mt-2" style="display: none;">
-                <button id="btnPlayPauseResponse" class="btn btn-success btn-sm me-2">Leggi Risposta</button>
-                <button id="btnStopTTSResponse" class="btn btn-danger btn-sm me-2">Ferma Lettura</button>
-                <button id="btnReplayResponse" class="btn btn-info btn-sm">Rileggi</button>
-                <label for="speedControl" class="form-label ms-3">Velocità:</label>
+                <button id="btnPlayPauseResponse" class="btn btn-success btn-sm me-2">Read Response</button>
+                <button id="btnStopTTSResponse" class="btn btn-danger btn-sm me-2">Stop Reading</button>
+                <button id="btnReplayResponse" class="btn btn-info btn-sm">Replay</button>
+                <label for="speedControl" class="form-label ms-3">Speed:</label>
                 <input type="range" class="form-range w-25 d-inline-block align-middle" id="speedControl" min="0.5" max="2" value="1" step="0.1">
             </div>
         </div>
@@ -98,13 +98,13 @@
     <!-- Bootstrap JS Bundle (Popper.js incluso) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Elementi del DOM - Fase 1
+        // DOM Elements - Step 1
         const pdfFileInput = document.getElementById('pdfFile');
         const materialeStudioTextarea = document.getElementById('materialeStudioText');
         const btnProcessMaterial = document.getElementById('btnProcessMaterial');
         const pdfStatusArea = document.getElementById('pdfStatusArea');
 
-        // Elementi del DOM - Fase 2
+        // DOM Elements - Step 2
         const fase2Title = document.getElementById('fase2Title');
         const recordingControls = document.getElementById('recordingControls');
         const btnStartRecording = document.getElementById('btnStartRecording');
@@ -112,7 +112,7 @@
         const statusMessage = document.getElementById('statusMessage');
         const spiegazioneArea = document.getElementById('spiegazioneArea');
 
-        // Elementi del DOM - Risultati
+        // DOM Elements - Results
         const resultsArea = document.getElementById('resultsArea');
         const feedbackArea = document.getElementById('feedbackArea');
         const ttsControls = document.getElementById('ttsControls');
@@ -124,23 +124,23 @@
         let recognition = null;
         let transcriptText = '';
         let agentResponseText = '';
-        let currentUtterance = null; // Per tenere traccia dell'ultima utterance
+        let currentUtterance = null; // To keep track of the last utterance
 
-        // URLs (assicurati che app_name sia corretto nel tuo urls.py di braynr_demo)
+        // URLs (make sure app_name is correct in your braynr_demo urls.py)
         const processPdfUrl = "{% url 'braynr_demo:process_pdf' %}";
         const processAudioUrl = "{% url 'braynr_demo:process_audio' %}";
 
-        // --- Inizializzazione e Setup --- 
+        // --- Initialization and Setup --- 
         function setupSpeechRecognition() {
             window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!window.SpeechRecognition) {
-                statusMessage.textContent = "Riconoscimento vocale non supportato dal browser.";
+                statusMessage.textContent = "Speech recognition not supported by this browser.";
                 btnStartRecording.disabled = true; return false;
             }
             recognition = new SpeechRecognition();
             recognition.continuous = true;
             recognition.interimResults = true;
-            recognition.lang = 'en-US';
+            recognition.lang = 'en-US'; // Already in English, good.
             recognition.onresult = handleRecognitionResult;
             recognition.onerror = handleRecognitionError;
             recognition.onend = handleRecognitionEnd;
@@ -159,26 +159,26 @@
         }
 
         function handleRecognitionError(event) {
-            statusMessage.textContent = "Errore riconoscimento: " + event.error;
+            statusMessage.textContent = "Recognition error: " + event.error;
             stopRecordingLogic();
         }
         
         function handleRecognitionEnd() {
-            // Non facciamo nulla qui per ora, lo stop manuale gestisce l'invio.
+            // We don't do anything here for now, manual stop handles sending.
         }
 
-        // --- Logica di Flusso ---
+        // --- Flow Logic ---
         btnProcessMaterial.addEventListener('click', async () => {
             const pdfFile = pdfFileInput.files[0];
             const textContent = materialeStudioTextarea.value;
 
             if (!pdfFile && !textContent.trim()) {
-                pdfStatusArea.textContent = "Per favore, carica un PDF o incolla del testo.";
+                pdfStatusArea.textContent = "Please upload a PDF or paste some text.";
                 pdfStatusArea.classList.remove('hidden');
                 return;
             }
 
-            pdfStatusArea.textContent = "Elaborazione materiale di studio in corso...";
+            pdfStatusArea.textContent = "Processing study material...";
             pdfStatusArea.classList.remove('hidden');
             resultsArea.classList.add('hidden');
             fase2Title.classList.add('hidden');
@@ -189,13 +189,13 @@
             if (pdfFile) {
                 formData.append('pdf_file', pdfFile);
             } else {
-                // Se non c'è PDF, inviamo il testo come se fosse un PDF fittizio
-                // Il backend dovrà essere adattato se vogliamo gestire testo puro in process_pdf_view
-                // Per ora, il backend si aspetta un 'pdf_file'. Adattiamo il backend o forziamo un file.
-                // ALTERNATIVA: creare un endpoint separato per solo testo, ma per ora procediamo con questo.
+                // If no PDF, send text as if it were a dummy PDF
+                // Backend will need to be adapted if we want to handle pure text in process_pdf_view
+                // For now, backend expects 'pdf_file'. Adapt backend or force a file.
+                // ALTERNATIVE: create a separate endpoint for text only, but for now proceed with this.
                  const textBlob = new Blob([textContent], { type: 'text/plain' });
                  formData.append('pdf_file', textBlob, 'context.txt'); 
-                 // ^ questo invia il testo come un file, il backend lo leggerà come se fosse un PDF di testo.
+                 // ^ this sends text as a file, backend will read it as if it were a text PDF.
             }
 
             try {
@@ -207,29 +207,29 @@
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ error: response.statusText }));
-                    throw new Error(errorData.error || `Errore server: ${response.status}`);
+                    throw new Error(errorData.error || `Server error: ${response.status}`);
                 }
 
                 const data = await response.json();
                 if (data.success) {
-                    pdfStatusArea.textContent = `Agente: "${data.agent_ready_message}"`;
+                    pdfStatusArea.textContent = `Agent: "${data.agent_ready_message}"`;
                     fase2Title.classList.remove('hidden');
                     recordingControls.classList.remove('hidden');
                     btnStartRecording.disabled = false;
-                    statusMessage.textContent = "Pronto per avviare la tua spiegazione.";
+                    statusMessage.textContent = "Ready to start your explanation.";
                 } else {
-                    pdfStatusArea.textContent = "Errore dal backend: " + (data.error || "Errore sconosciuto.");
+                    pdfStatusArea.textContent = "Error from backend: " + (data.error || "Unknown error.");
                 }
             } catch (error) {
-                pdfStatusArea.textContent = "Errore comunicazione (Fase 1): " + error.message;
+                pdfStatusArea.textContent = "Communication error (Step 1): " + error.message;
             }
         });
 
         btnStartRecording.addEventListener('click', () => {
             if (!recognition && !setupSpeechRecognition()) return;
             transcriptText = '';
-            spiegazioneArea.textContent = "Ascoltando...";
-            statusMessage.textContent = "Registrazione in corso...";
+            spiegazioneArea.textContent = "Listening...";
+            statusMessage.textContent = "Recording in progress...";
             btnStartRecording.disabled = true;
             btnStopRecording.disabled = false;
             resultsArea.classList.add('hidden');
@@ -237,7 +237,7 @@
             try {
                 recognition.start();
             } catch (e) {
-                statusMessage.textContent = "Errore avvio registrazione: " + e.message;
+                statusMessage.textContent = "Error starting recording: " + e.message;
                 btnStartRecording.disabled = false;
             }
         });
@@ -246,13 +246,13 @@
 
         function stopRecordingLogic() {
             if (recognition) recognition.stop();
-            statusMessage.textContent = "Registrazione fermata. Elaborazione spiegazione...";
-            btnStartRecording.disabled = false; // Riabilita per nuova registrazione se necessario
+            statusMessage.textContent = "Recording stopped. Processing explanation...";
+            btnStartRecording.disabled = false; // Re-enable for new recording if needed
             btnStopRecording.disabled = true;
 
             if (!transcriptText.trim()) {
                 resultsArea.classList.remove('hidden');
-                feedbackArea.textContent = "Nessun testo trascritto da inviare.";
+                feedbackArea.textContent = "No transcribed text to send.";
                 hideTTSControls();
                 return;
             }
@@ -261,12 +261,12 @@
 
         async function sendTranscriptionToBackend(transcription) {
             resultsArea.classList.remove('hidden');
-            feedbackArea.textContent = "Invio spiegazione all'agente...";
+            feedbackArea.textContent = "Sending explanation to the agent...";
             hideTTSControls();
 
             const formData = new FormData();
             formData.append('transcription', transcription);
-            // Nota: non inviamo più audio_data o context qui, l'agente usa la sessione.
+            // Note: We no longer send audio_data or context here, agent uses session.
 
             try {
                 const response = await fetch(processAudioUrl, {
@@ -276,7 +276,7 @@
                 });
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ error: response.statusText }));
-                    throw new Error(errorData.error || `Errore server: ${response.status}`);
+                    throw new Error(errorData.error || `Server error: ${response.status}`);
                 }
                 const data = await response.json();
                 if (data.success) {
@@ -284,18 +284,18 @@
                     feedbackArea.textContent = agentResponseText;
                     if (agentResponseText) showTTSControls();
                 } else {
-                    feedbackArea.textContent = "Errore dal backend (Fase 2): " + (data.error || "Errore sconosciuto.");
+                    feedbackArea.textContent = "Error from backend (Step 2): " + (data.error || "Unknown error.");
                 }
             } catch (error) {
-                feedbackArea.textContent = "Errore comunicazione (Fase 2): " + error.message;
+                feedbackArea.textContent = "Communication error (Step 2): " + error.message;
             }
         }
 
-        // --- Funzioni TTS ---
+        // --- TTS Functions ---
         function showTTSControls() { 
             if (ttsControls) ttsControls.style.display = 'block';
-            if (btnPlayPauseResponse) { // Assicurati che il pulsante esista
-                btnPlayPauseResponse.textContent = "Leggi Risposta";
+            if (btnPlayPauseResponse) { // Ensure button exists
+                btnPlayPauseResponse.textContent = "Read Response";
                 btnPlayPauseResponse.classList.remove('btn-warning');
                 btnPlayPauseResponse.classList.add('btn-success');
             }
@@ -304,54 +304,54 @@
         function hideTTSControls() { 
             if (ttsControls) ttsControls.style.display = 'none'; 
             if (typeof window.speechSynthesis !== 'undefined') {
-                 window.speechSynthesis.cancel(); // Ferma la lettura se attiva
+                 window.speechSynthesis.cancel(); // Stop reading if active
             }
         }
 
         function speakText(text) {
             if (!text || typeof window.speechSynthesis === 'undefined') return;
             
-            // Se c'è una utterance in corso o in pausa, fermala prima di crearne una nuova
+            // If there's an ongoing or paused utterance, stop it before creating a new one
             if (window.speechSynthesis.speaking || window.speechSynthesis.paused) {
                 window.speechSynthesis.cancel();
             }
 
             currentUtterance = new SpeechSynthesisUtterance(text);
-            currentUtterance.lang = 'en-US';
+            currentUtterance.lang = 'en-US'; // Already English
             currentUtterance.rate = parseFloat(speedControl.value);
 
             currentUtterance.onstart = () => {
                 console.log("TTS started");
-                btnPlayPauseResponse.textContent = "Pausa";
+                btnPlayPauseResponse.textContent = "Pause";
                 btnPlayPauseResponse.classList.remove('btn-success');
                 btnPlayPauseResponse.classList.add('btn-warning');
             };
 
             currentUtterance.onpause = () => {
                 console.log("TTS paused");
-                btnPlayPauseResponse.textContent = "Riprendi";
+                btnPlayPauseResponse.textContent = "Resume";
                 btnPlayPauseResponse.classList.remove('btn-warning');
                 btnPlayPauseResponse.classList.add('btn-success');
             };
 
             currentUtterance.onresume = () => {
                 console.log("TTS resumed");
-                btnPlayPauseResponse.textContent = "Pausa";
+                btnPlayPauseResponse.textContent = "Pause";
                 btnPlayPauseResponse.classList.remove('btn-success');
                 btnPlayPauseResponse.classList.add('btn-warning');
             };
 
             currentUtterance.onend = () => {
                 console.log("TTS ended");
-                btnPlayPauseResponse.textContent = "Leggi Risposta";
+                btnPlayPauseResponse.textContent = "Read Response";
                 btnPlayPauseResponse.classList.remove('btn-warning');
                 btnPlayPauseResponse.classList.add('btn-success');
-                currentUtterance = null; // Resetta l'utterance
+                currentUtterance = null; // Reset utterance
             };
 
             currentUtterance.onerror = (event) => {
                 console.error("TTS Error:", event);
-                btnPlayPauseResponse.textContent = "Leggi Risposta";
+                btnPlayPauseResponse.textContent = "Read Response";
                 btnPlayPauseResponse.classList.remove('btn-warning');
                 btnPlayPauseResponse.classList.add('btn-success');
                 currentUtterance = null;
@@ -379,7 +379,7 @@
                 // L'UI del pulsante PlayPause si resetterà nell'onend.
                 // Se non c'era nulla in corso, onend non scatta, quindi resettiamo per sicurezza.
                 if (!currentUtterance) { // o se non era speaking/paused
-                     btnPlayPauseResponse.textContent = "Leggi Risposta";
+                     btnPlayPauseResponse.textContent = "Read Response";
                      btnPlayPauseResponse.classList.remove('btn-warning');
                      btnPlayPauseResponse.classList.add('btn-success');
                 }

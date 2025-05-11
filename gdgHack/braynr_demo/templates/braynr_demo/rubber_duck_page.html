@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Braynr - Rubber Duck</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 800px;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #343a40;
+            margin-bottom: 20px;
+        }
+        .btn-custom {
+            margin-right: 10px;
+        }
+        #feedbackArea, #spiegazioneArea, #pdfStatusArea {
+            margin-top: 15px;
+            padding: 15px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background-color: #e9ecef;
+            min-height: 60px;
+        }
+        #spiegazioneArea { background-color: #f8f9fa; }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center">Braynr - Modalità Rubber Duck (Flusso in 2 Passi)</h1>
+        <hr>
+
+        <!-- Fase 1: Caricamento e Processamento PDF -->
+        <h2>Fase 1: Fornisci il Materiale di Studio</h2>
+        <div class="mb-3">
+            <label for="pdfFile" class="form-label"><strong>Carica PDF Materiale di Studio:</strong></label>
+            <input class="form-control" type="file" id="pdfFile" accept=".pdf">
+        </div>
+        <div class="mb-3">
+            <label for="materialeStudioText" class="form-label"><strong>Oppure Incolla Testo (usato se nessun PDF è caricato):</strong></label>
+            <textarea class="form-control" id="materialeStudioText" rows="3" placeholder="Testo alternativo o aggiuntivo..."></textarea>
+        </div>
+        <button id="btnProcessMaterial" class="btn btn-info mb-3">Carica Materiale e Prepara Agente</button>
+        
+        <div id="pdfStatusArea" class="hidden">
+            Stato elaborazione materiale...
+        </div>
+
+        <!-- Fase 2: Spiegazione Utente -->
+        <h2 id="fase2Title" class="hidden">Fase 2: La Tua Spiegazione Vocale</h2>
+        <div id="recordingControls" class="hidden">
+            <div class="mb-3 text-center">
+                <button id="btnStartRecording" class="btn btn-success btn-custom">Avvia Spiegazione</button>
+                <button id="btnStopRecording" class="btn btn-danger btn-custom" disabled>Ferma Spiegazione</button>
+            </div>
+            <div class="mb-3">
+                <label class="form-label"><strong>Stato Registrazione:</strong></label>
+                <p id="statusMessage" class="form-text">Pronto per iniziare...</p>
+            </div>
+            <div class="mb-3">
+                <label class="form-label"><strong>La tua spiegazione (testo riconosciuto):</strong></label>
+                <div id="spiegazioneArea">
+                    Il testo riconosciuto dalla tua spiegazione apparirà qui...
+                </div>
+            </div>
+        </div>
+
+        <!-- Risultati e Controlli TTS -->
+        <div id="resultsArea" class="hidden">
+            <h2>Feedback dall'Agente</h2>
+            <div id="feedbackArea">
+                Il feedback dall'AI apparirà qui...
+            </div>
+            <div id="ttsControls" class="mt-2" style="display: none;">
+                <button id="btnPlayPauseResponse" class="btn btn-success btn-sm me-2">Leggi Risposta</button>
+                <button id="btnStopTTSResponse" class="btn btn-danger btn-sm me-2">Ferma Lettura</button>
+                <button id="btnReplayResponse" class="btn btn-info btn-sm">Rileggi</button>
+                <label for="speedControl" class="form-label ms-3">Velocità:</label>
+                <input type="range" class="form-range w-25 d-inline-block align-middle" id="speedControl" min="0.5" max="2" value="1" step="0.1">
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle (Popper.js incluso) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Elementi del DOM - Fase 1
+        const pdfFileInput = document.getElementById('pdfFile');
+        const materialeStudioTextarea = document.getElementById('materialeStudioText');
+        const btnProcessMaterial = document.getElementById('btnProcessMaterial');
+        const pdfStatusArea = document.getElementById('pdfStatusArea');
+
+        // Elementi del DOM - Fase 2
+        const fase2Title = document.getElementById('fase2Title');
+        const recordingControls = document.getElementById('recordingControls');
+        const btnStartRecording = document.getElementById('btnStartRecording');
+        const btnStopRecording = document.getElementById('btnStopRecording');
+        const statusMessage = document.getElementById('statusMessage');
+        const spiegazioneArea = document.getElementById('spiegazioneArea');
+
+        // Elementi del DOM - Risultati
+        const resultsArea = document.getElementById('resultsArea');
+        const feedbackArea = document.getElementById('feedbackArea');
+        const ttsControls = document.getElementById('ttsControls');
+        const btnPlayPauseResponse = document.getElementById('btnPlayPauseResponse');
+        const btnStopTTSResponse = document.getElementById('btnStopTTSResponse');
+        const btnReplayResponse = document.getElementById('btnReplayResponse');
+        const speedControl = document.getElementById('speedControl');
+
+        let recognition = null;
+        let transcriptText = '';
+        let agentResponseText = '';
+        let currentUtterance = null; // Per tenere traccia dell'ultima utterance
+
+        // URLs (assicurati che app_name sia corretto nel tuo urls.py di braynr_demo)
+        const processPdfUrl = "{% url 'braynr_demo:process_pdf' %}";
+        const processAudioUrl = "{% url 'braynr_demo:process_audio' %}";
+
+        // --- Inizializzazione e Setup --- 
+        function setupSpeechRecognition() {
+            window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!window.SpeechRecognition) {
+                statusMessage.textContent = "Riconoscimento vocale non supportato dal browser.";
+                btnStartRecording.disabled = true; return false;
+            }
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+            recognition.onresult = handleRecognitionResult;
+            recognition.onerror = handleRecognitionError;
+            recognition.onend = handleRecognitionEnd;
+            return true;
+        }
+
+        function handleRecognitionResult(event) {
+            let currentInterim = '', currentFinal = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const segment = event.results[i][0].transcript;
+                if (event.results[i].isFinal) currentFinal += segment + ' ';
+                else currentInterim += segment;
+            }
+            if (currentFinal) transcriptText += currentFinal;
+            spiegazioneArea.textContent = transcriptText + currentInterim;
+        }
+
+        function handleRecognitionError(event) {
+            statusMessage.textContent = "Errore riconoscimento: " + event.error;
+            stopRecordingLogic();
+        }
+        
+        function handleRecognitionEnd() {
+            // Non facciamo nulla qui per ora, lo stop manuale gestisce l'invio.
+        }
+
+        // --- Logica di Flusso ---
+        btnProcessMaterial.addEventListener('click', async () => {
+            const pdfFile = pdfFileInput.files[0];
+            const textContent = materialeStudioTextarea.value;
+
+            if (!pdfFile && !textContent.trim()) {
+                pdfStatusArea.textContent = "Per favore, carica un PDF o incolla del testo.";
+                pdfStatusArea.classList.remove('hidden');
+                return;
+            }
+
+            pdfStatusArea.textContent = "Elaborazione materiale di studio in corso...";
+            pdfStatusArea.classList.remove('hidden');
+            resultsArea.classList.add('hidden');
+            fase2Title.classList.add('hidden');
+            recordingControls.classList.add('hidden');
+            hideTTSControls();
+
+            const formData = new FormData();
+            if (pdfFile) {
+                formData.append('pdf_file', pdfFile);
+            } else {
+                // Se non c'è PDF, inviamo il testo come se fosse un PDF fittizio
+                // Il backend dovrà essere adattato se vogliamo gestire testo puro in process_pdf_view
+                // Per ora, il backend si aspetta un 'pdf_file'. Adattiamo il backend o forziamo un file.
+                // ALTERNATIVA: creare un endpoint separato per solo testo, ma per ora procediamo con questo.
+                 const textBlob = new Blob([textContent], { type: 'text/plain' });
+                 formData.append('pdf_file', textBlob, 'context.txt'); 
+                 // ^ questo invia il testo come un file, il backend lo leggerà come se fosse un PDF di testo.
+            }
+
+            try {
+                const response = await fetch(processPdfUrl, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: response.statusText }));
+                    throw new Error(errorData.error || `Errore server: ${response.status}`);
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    pdfStatusArea.textContent = `Agente: "${data.agent_ready_message}"`;
+                    fase2Title.classList.remove('hidden');
+                    recordingControls.classList.remove('hidden');
+                    btnStartRecording.disabled = false;
+                    statusMessage.textContent = "Pronto per avviare la tua spiegazione.";
+                } else {
+                    pdfStatusArea.textContent = "Errore dal backend: " + (data.error || "Errore sconosciuto.");
+                }
+            } catch (error) {
+                pdfStatusArea.textContent = "Errore comunicazione (Fase 1): " + error.message;
+            }
+        });
+
+        btnStartRecording.addEventListener('click', () => {
+            if (!recognition && !setupSpeechRecognition()) return;
+            transcriptText = '';
+            spiegazioneArea.textContent = "Ascoltando...";
+            statusMessage.textContent = "Registrazione in corso...";
+            btnStartRecording.disabled = true;
+            btnStopRecording.disabled = false;
+            resultsArea.classList.add('hidden');
+            hideTTSControls();
+            try {
+                recognition.start();
+            } catch (e) {
+                statusMessage.textContent = "Errore avvio registrazione: " + e.message;
+                btnStartRecording.disabled = false;
+            }
+        });
+
+        btnStopRecording.addEventListener('click', stopRecordingLogic);
+
+        function stopRecordingLogic() {
+            if (recognition) recognition.stop();
+            statusMessage.textContent = "Registrazione fermata. Elaborazione spiegazione...";
+            btnStartRecording.disabled = false; // Riabilita per nuova registrazione se necessario
+            btnStopRecording.disabled = true;
+
+            if (!transcriptText.trim()) {
+                resultsArea.classList.remove('hidden');
+                feedbackArea.textContent = "Nessun testo trascritto da inviare.";
+                hideTTSControls();
+                return;
+            }
+            sendTranscriptionToBackend(transcriptText);
+        }
+
+        async function sendTranscriptionToBackend(transcription) {
+            resultsArea.classList.remove('hidden');
+            feedbackArea.textContent = "Invio spiegazione all'agente...";
+            hideTTSControls();
+
+            const formData = new FormData();
+            formData.append('transcription', transcription);
+            // Nota: non inviamo più audio_data o context qui, l'agente usa la sessione.
+
+            try {
+                const response = await fetch(processAudioUrl, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                    body: formData
+                });
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: response.statusText }));
+                    throw new Error(errorData.error || `Errore server: ${response.status}`);
+                }
+                const data = await response.json();
+                if (data.success) {
+                    agentResponseText = data.agent_response;
+                    feedbackArea.textContent = agentResponseText;
+                    if (agentResponseText) showTTSControls();
+                } else {
+                    feedbackArea.textContent = "Errore dal backend (Fase 2): " + (data.error || "Errore sconosciuto.");
+                }
+            } catch (error) {
+                feedbackArea.textContent = "Errore comunicazione (Fase 2): " + error.message;
+            }
+        }
+
+        // --- Funzioni TTS ---
+        function showTTSControls() { 
+            if (ttsControls) ttsControls.style.display = 'block';
+            if (btnPlayPauseResponse) { // Assicurati che il pulsante esista
+                btnPlayPauseResponse.textContent = "Leggi Risposta";
+                btnPlayPauseResponse.classList.remove('btn-warning');
+                btnPlayPauseResponse.classList.add('btn-success');
+            }
+        }
+
+        function hideTTSControls() { 
+            if (ttsControls) ttsControls.style.display = 'none'; 
+            if (typeof window.speechSynthesis !== 'undefined') {
+                 window.speechSynthesis.cancel(); // Ferma la lettura se attiva
+            }
+        }
+
+        function speakText(text) {
+            if (!text || typeof window.speechSynthesis === 'undefined') return;
+            
+            // Se c'è una utterance in corso o in pausa, fermala prima di crearne una nuova
+            if (window.speechSynthesis.speaking || window.speechSynthesis.paused) {
+                window.speechSynthesis.cancel();
+            }
+
+            currentUtterance = new SpeechSynthesisUtterance(text);
+            currentUtterance.lang = 'en-US';
+            currentUtterance.rate = parseFloat(speedControl.value);
+
+            currentUtterance.onstart = () => {
+                console.log("TTS started");
+                btnPlayPauseResponse.textContent = "Pausa";
+                btnPlayPauseResponse.classList.remove('btn-success');
+                btnPlayPauseResponse.classList.add('btn-warning');
+            };
+
+            currentUtterance.onpause = () => {
+                console.log("TTS paused");
+                btnPlayPauseResponse.textContent = "Riprendi";
+                btnPlayPauseResponse.classList.remove('btn-warning');
+                btnPlayPauseResponse.classList.add('btn-success');
+            };
+
+            currentUtterance.onresume = () => {
+                console.log("TTS resumed");
+                btnPlayPauseResponse.textContent = "Pausa";
+                btnPlayPauseResponse.classList.remove('btn-success');
+                btnPlayPauseResponse.classList.add('btn-warning');
+            };
+
+            currentUtterance.onend = () => {
+                console.log("TTS ended");
+                btnPlayPauseResponse.textContent = "Leggi Risposta";
+                btnPlayPauseResponse.classList.remove('btn-warning');
+                btnPlayPauseResponse.classList.add('btn-success');
+                currentUtterance = null; // Resetta l'utterance
+            };
+
+            currentUtterance.onerror = (event) => {
+                console.error("TTS Error:", event);
+                btnPlayPauseResponse.textContent = "Leggi Risposta";
+                btnPlayPauseResponse.classList.remove('btn-warning');
+                btnPlayPauseResponse.classList.add('btn-success');
+                currentUtterance = null;
+            };
+
+            window.speechSynthesis.speak(currentUtterance);
+        }
+
+        btnPlayPauseResponse.addEventListener('click', () => {
+            if (!agentResponseText) return;
+
+            if (window.speechSynthesis.paused && currentUtterance) {
+                window.speechSynthesis.resume();
+            } else if (window.speechSynthesis.speaking && currentUtterance) {
+                window.speechSynthesis.pause();
+            } else {
+                // Non sta parlando e non è in pausa, quindi inizia (o ricomincia)
+                speakText(agentResponseText);
+            }
+        });
+
+        btnStopTTSResponse.addEventListener('click', () => {
+            if (typeof window.speechSynthesis !== 'undefined') {
+                window.speechSynthesis.cancel(); // Questo triggera l'evento onend dell'utterance se attiva
+                // L'UI del pulsante PlayPause si resetterà nell'onend.
+                // Se non c'era nulla in corso, onend non scatta, quindi resettiamo per sicurezza.
+                if (!currentUtterance) { // o se non era speaking/paused
+                     btnPlayPauseResponse.textContent = "Leggi Risposta";
+                     btnPlayPauseResponse.classList.remove('btn-warning');
+                     btnPlayPauseResponse.classList.add('btn-success');
+                }
+            }
+        });
+
+        btnReplayResponse.addEventListener('click', () => {
+            if (!agentResponseText) return;
+            speakText(agentResponseText); // speakText già gestisce il cancel se necessario
+        });
+
+        // --- Utility ---
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // Stato iniziale UI
+        document.addEventListener('DOMContentLoaded', () => {
+            fase2Title.classList.add('hidden');
+            recordingControls.classList.add('hidden');
+            resultsArea.classList.add('hidden');
+            hideTTSControls();
+            // Setup riconoscimento vocale ma non avviarlo
+            if (!recognition) setupSpeechRecognition(); 
+        });
+
+    </script>
+</body>
+</html> 

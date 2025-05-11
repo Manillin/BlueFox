@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -98,13 +98,13 @@
     <!-- Bootstrap JS Bundle (Popper.js incluso) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // DOM Elements - Step 1
+        // Elementi del DOM - Fase 1
         const pdfFileInput = document.getElementById('pdfFile');
         const materialeStudioTextarea = document.getElementById('materialeStudioText');
         const btnProcessMaterial = document.getElementById('btnProcessMaterial');
         const pdfStatusArea = document.getElementById('pdfStatusArea');
 
-        // DOM Elements - Step 2
+        // Elementi del DOM - Fase 2
         const fase2Title = document.getElementById('fase2Title');
         const recordingControls = document.getElementById('recordingControls');
         const btnStartRecording = document.getElementById('btnStartRecording');
@@ -112,7 +112,7 @@
         const statusMessage = document.getElementById('statusMessage');
         const spiegazioneArea = document.getElementById('spiegazioneArea');
 
-        // DOM Elements - Results
+        // Elementi del DOM - Risultati
         const resultsArea = document.getElementById('resultsArea');
         const feedbackArea = document.getElementById('feedbackArea');
         const ttsControls = document.getElementById('ttsControls');
@@ -124,23 +124,23 @@
         let recognition = null;
         let transcriptText = '';
         let agentResponseText = '';
-        let currentUtterance = null; // To keep track of the last utterance
+        let currentUtterance = null; // Per tenere traccia dell'ultima utterance
 
-        // URLs (make sure app_name is correct in your braynr_demo urls.py)
+        // URLs (assicurati che app_name sia corretto nel tuo urls.py di braynr_demo)
         const processPdfUrl = "{% url 'braynr_demo:process_pdf' %}";
         const processAudioUrl = "{% url 'braynr_demo:process_audio' %}";
 
-        // --- Initialization and Setup --- 
+        // --- Inizializzazione e Setup --- 
         function setupSpeechRecognition() {
             window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!window.SpeechRecognition) {
-                statusMessage.textContent = "Speech recognition not supported by this browser.";
+                statusMessage.textContent = "Riconoscimento vocale non supportato dal browser.";
                 btnStartRecording.disabled = true; return false;
             }
             recognition = new SpeechRecognition();
             recognition.continuous = true;
             recognition.interimResults = true;
-            recognition.lang = 'en-US'; // Already in English, good.
+            recognition.lang = 'en-US';
             recognition.onresult = handleRecognitionResult;
             recognition.onerror = handleRecognitionError;
             recognition.onend = handleRecognitionEnd;
@@ -159,26 +159,26 @@
         }
 
         function handleRecognitionError(event) {
-            statusMessage.textContent = "Recognition error: " + event.error;
+            statusMessage.textContent = "Errore riconoscimento: " + event.error;
             stopRecordingLogic();
         }
         
         function handleRecognitionEnd() {
-            // We don't do anything here for now, manual stop handles sending.
+            // Non facciamo nulla qui per ora, lo stop manuale gestisce l'invio.
         }
 
-        // --- Flow Logic ---
+        // --- Logica di Flusso ---
         btnProcessMaterial.addEventListener('click', async () => {
             const pdfFile = pdfFileInput.files[0];
             const textContent = materialeStudioTextarea.value;
 
             if (!pdfFile && !textContent.trim()) {
-                pdfStatusArea.textContent = "Please upload a PDF or paste some text.";
+                pdfStatusArea.textContent = "Per favore, carica un PDF o incolla del testo.";
                 pdfStatusArea.classList.remove('hidden');
                 return;
             }
 
-            pdfStatusArea.textContent = "Processing study material...";
+            pdfStatusArea.textContent = "Elaborazione materiale di studio in corso...";
             pdfStatusArea.classList.remove('hidden');
             resultsArea.classList.add('hidden');
             fase2Title.classList.add('hidden');
@@ -189,13 +189,13 @@
             if (pdfFile) {
                 formData.append('pdf_file', pdfFile);
             } else {
-                // If no PDF, send text as if it were a dummy PDF
-                // Backend will need to be adapted if we want to handle pure text in process_pdf_view
-                // For now, backend expects 'pdf_file'. Adapt backend or force a file.
-                // ALTERNATIVE: create a separate endpoint for text only, but for now proceed with this.
+                // Se non c'è PDF, inviamo il testo come se fosse un PDF fittizio
+                // Il backend dovrà essere adattato se vogliamo gestire testo puro in process_pdf_view
+                // Per ora, il backend si aspetta un 'pdf_file'. Adattiamo il backend o forziamo un file.
+                // ALTERNATIVA: creare un endpoint separato per solo testo, ma per ora procediamo con questo.
                  const textBlob = new Blob([textContent], { type: 'text/plain' });
                  formData.append('pdf_file', textBlob, 'context.txt'); 
-                 // ^ this sends text as a file, backend will read it as if it were a text PDF.
+                 // ^ questo invia il testo come un file, il backend lo leggerà come se fosse un PDF di testo.
             }
 
             try {
@@ -207,29 +207,29 @@
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ error: response.statusText }));
-                    throw new Error(errorData.error || `Server error: ${response.status}`);
+                    throw new Error(errorData.error || `Errore server: ${response.status}`);
                 }
 
                 const data = await response.json();
                 if (data.success) {
-                    pdfStatusArea.textContent = `Agent: "${data.agent_ready_message}"`;
+                    pdfStatusArea.textContent = `Agente: "${data.agent_ready_message}"`;
                     fase2Title.classList.remove('hidden');
                     recordingControls.classList.remove('hidden');
                     btnStartRecording.disabled = false;
-                    statusMessage.textContent = "Ready to start your explanation.";
+                    statusMessage.textContent = "Pronto per avviare la tua spiegazione.";
                 } else {
-                    pdfStatusArea.textContent = "Error from backend: " + (data.error || "Unknown error.");
+                    pdfStatusArea.textContent = "Errore dal backend: " + (data.error || "Errore sconosciuto.");
                 }
             } catch (error) {
-                pdfStatusArea.textContent = "Communication error (Step 1): " + error.message;
+                pdfStatusArea.textContent = "Errore comunicazione (Fase 1): " + error.message;
             }
         });
 
         btnStartRecording.addEventListener('click', () => {
             if (!recognition && !setupSpeechRecognition()) return;
             transcriptText = '';
-            spiegazioneArea.textContent = "Listening...";
-            statusMessage.textContent = "Recording in progress...";
+            spiegazioneArea.textContent = "Ascoltando...";
+            statusMessage.textContent = "Registrazione in corso...";
             btnStartRecording.disabled = true;
             btnStopRecording.disabled = false;
             resultsArea.classList.add('hidden');
@@ -237,7 +237,7 @@
             try {
                 recognition.start();
             } catch (e) {
-                statusMessage.textContent = "Error starting recording: " + e.message;
+                statusMessage.textContent = "Errore avvio registrazione: " + e.message;
                 btnStartRecording.disabled = false;
             }
         });
@@ -246,13 +246,13 @@
 
         function stopRecordingLogic() {
             if (recognition) recognition.stop();
-            statusMessage.textContent = "Recording stopped. Processing explanation...";
-            btnStartRecording.disabled = false; // Re-enable for new recording if needed
-            btnStopRecording.disabled = true;
+            statusMessage.textContent = "Registrazione fermata. Elaborazione spiegazione...";
+            btnStartRecording.disabled = false; // Riabilita per nuova registrazione se necessario
+                    btnStopRecording.disabled = true;
 
             if (!transcriptText.trim()) {
                 resultsArea.classList.remove('hidden');
-                feedbackArea.textContent = "No transcribed text to send.";
+                feedbackArea.textContent = "Nessun testo trascritto da inviare.";
                 hideTTSControls();
                 return;
             }
@@ -261,41 +261,41 @@
 
         async function sendTranscriptionToBackend(transcription) {
             resultsArea.classList.remove('hidden');
-            feedbackArea.textContent = "Sending explanation to the agent...";
+            feedbackArea.textContent = "Invio spiegazione all'agente...";
             hideTTSControls();
 
-            const formData = new FormData();
+                    const formData = new FormData();
             formData.append('transcription', transcription);
-            // Note: We no longer send audio_data or context here, agent uses session.
+            // Nota: non inviamo più audio_data o context qui, l'agente usa la sessione.
 
-            try {
+                    try {
                 const response = await fetch(processAudioUrl, {
-                    method: 'POST',
+                            method: 'POST',
                     headers: { 'X-CSRFToken': getCookie('csrftoken') },
-                    body: formData
-                });
-                if (!response.ok) {
+                            body: formData
+                        });
+                        if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ error: response.statusText }));
-                    throw new Error(errorData.error || `Server error: ${response.status}`);
-                }
-                const data = await response.json();
+                    throw new Error(errorData.error || `Errore server: ${response.status}`);
+                        }
+                        const data = await response.json(); 
                 if (data.success) {
                     agentResponseText = data.agent_response;
                     feedbackArea.textContent = agentResponseText;
                     if (agentResponseText) showTTSControls();
-                } else {
-                    feedbackArea.textContent = "Error from backend (Step 2): " + (data.error || "Unknown error.");
-                }
-            } catch (error) {
-                feedbackArea.textContent = "Communication error (Step 2): " + error.message;
+                        } else {
+                    feedbackArea.textContent = "Errore dal backend (Fase 2): " + (data.error || "Errore sconosciuto.");
+                        }
+                    } catch (error) {
+                feedbackArea.textContent = "Errore comunicazione (Fase 2): " + error.message;
             }
         }
 
-        // --- TTS Functions ---
+        // --- Funzioni TTS ---
         function showTTSControls() { 
             if (ttsControls) ttsControls.style.display = 'block';
-            if (btnPlayPauseResponse) { // Ensure button exists
-                btnPlayPauseResponse.textContent = "Read Response";
+            if (btnPlayPauseResponse) { // Assicurati che il pulsante esista
+                btnPlayPauseResponse.textContent = "Leggi Risposta";
                 btnPlayPauseResponse.classList.remove('btn-warning');
                 btnPlayPauseResponse.classList.add('btn-success');
             }
@@ -304,54 +304,54 @@
         function hideTTSControls() { 
             if (ttsControls) ttsControls.style.display = 'none'; 
             if (typeof window.speechSynthesis !== 'undefined') {
-                 window.speechSynthesis.cancel(); // Stop reading if active
+                 window.speechSynthesis.cancel(); // Ferma la lettura se attiva
             }
         }
 
         function speakText(text) {
             if (!text || typeof window.speechSynthesis === 'undefined') return;
             
-            // If there's an ongoing or paused utterance, stop it before creating a new one
+            // Se c'è una utterance in corso o in pausa, fermala prima di crearne una nuova
             if (window.speechSynthesis.speaking || window.speechSynthesis.paused) {
                 window.speechSynthesis.cancel();
             }
 
             currentUtterance = new SpeechSynthesisUtterance(text);
-            currentUtterance.lang = 'en-US'; // Already English
+            currentUtterance.lang = 'en-US';
             currentUtterance.rate = parseFloat(speedControl.value);
 
             currentUtterance.onstart = () => {
                 console.log("TTS started");
-                btnPlayPauseResponse.textContent = "Pause";
+                btnPlayPauseResponse.textContent = "Pausa";
                 btnPlayPauseResponse.classList.remove('btn-success');
                 btnPlayPauseResponse.classList.add('btn-warning');
             };
 
             currentUtterance.onpause = () => {
                 console.log("TTS paused");
-                btnPlayPauseResponse.textContent = "Resume";
+                btnPlayPauseResponse.textContent = "Riprendi";
                 btnPlayPauseResponse.classList.remove('btn-warning');
                 btnPlayPauseResponse.classList.add('btn-success');
             };
 
             currentUtterance.onresume = () => {
                 console.log("TTS resumed");
-                btnPlayPauseResponse.textContent = "Pause";
+                btnPlayPauseResponse.textContent = "Pausa";
                 btnPlayPauseResponse.classList.remove('btn-success');
                 btnPlayPauseResponse.classList.add('btn-warning');
             };
 
             currentUtterance.onend = () => {
                 console.log("TTS ended");
-                btnPlayPauseResponse.textContent = "Read Response";
+                btnPlayPauseResponse.textContent = "Leggi Risposta";
                 btnPlayPauseResponse.classList.remove('btn-warning');
                 btnPlayPauseResponse.classList.add('btn-success');
-                currentUtterance = null; // Reset utterance
+                currentUtterance = null; // Resetta l'utterance
             };
 
             currentUtterance.onerror = (event) => {
                 console.error("TTS Error:", event);
-                btnPlayPauseResponse.textContent = "Read Response";
+                btnPlayPauseResponse.textContent = "Leggi Risposta";
                 btnPlayPauseResponse.classList.remove('btn-warning');
                 btnPlayPauseResponse.classList.add('btn-success');
                 currentUtterance = null;
@@ -379,7 +379,7 @@
                 // L'UI del pulsante PlayPause si resetterà nell'onend.
                 // Se non c'era nulla in corso, onend non scatta, quindi resettiamo per sicurezza.
                 if (!currentUtterance) { // o se non era speaking/paused
-                     btnPlayPauseResponse.textContent = "Read Response";
+                     btnPlayPauseResponse.textContent = "Leggi Risposta";
                      btnPlayPauseResponse.classList.remove('btn-warning');
                      btnPlayPauseResponse.classList.add('btn-success');
                 }

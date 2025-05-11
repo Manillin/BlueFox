@@ -69,4 +69,38 @@ Il sistema "Braynr" implementa con successo un'architettura multi-agente per il 
 4.  **Stack Tecnologico:** Python, Django, `requests` per API, `PyPDF2` per PDF, ADK per gli agenti.
 5.  **Obiettivo:** Fornire strumenti AI per uno studio più efficace. Rubber Duck OK, Planner in via di risoluzione per l'integrazione web.
 
-Spero questo ti sia d'aiuto per la presentazione! In bocca al lupo!
+
+
+
+# flow graph:
+
+
+```mermaid
+graph TD
+    User[Utente Web] --> FrontendRD[Frontend Rubber Duck]
+    User --> FrontendP[Frontend Planner]
+    
+    FrontendRD -->|Carica PDF| Django1[Django: process_pdf_view]
+    Django1 -->|Estrae testo| PDF1[Elaborazione PDF]
+    PDF1 --> Session1[Crea sessione ADK]
+    Session1 -->|POST /run| ADK1[ADK: Agente Rubber Duck]
+    ADK1 -->|Conferma| Django1
+    Django1 -->|Salva PDF in sessione| FrontendRD
+    
+    FrontendRD -->|Invia Audio/Trascrizione| Django2[Django: process_rubber_duck_audio]
+    Django2 -->|Recupera PDF da sessione| Session2[Sessione Django]
+    Session2 -->|POST /run| ADK2[ADK: Rubber Duck]
+    ADK2 -->|Feedback| Django2
+    Django2 -->|JSON response| FrontendRD
+    
+    FrontendP -->|Carica PDF + parametri| Django3[Django: generate_study_plan_view]
+    Django3 -->|Estrae testo| PDF2[Elaborazione PDF]
+    PDF2 --> Structure[Crea JSON strutturato]
+    Structure -->|Codifica Base64| Payload[Prepara payload]
+    Payload -->|POST /run_sse| ADK3[ADK: Agente Planner]
+    ADK3 -->|Stream SSE| Django3
+    Django3 -->|Problemi parsing risposta| FrontendP
+    
+    classDef error fill:#f99,stroke:#f00,stroke-width:2px
+    class Django3,ADK3 error
+```
